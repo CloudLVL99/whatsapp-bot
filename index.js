@@ -8,7 +8,7 @@ const client = new Client({
 });
 
 // Target group name (must match exactly)
-const groupName = "Co*as de Ferro Sabado 11h";
+const groupName = "_Co*as de Ferro Sabado 11h";
 
 // Names to automatically insert into the list
 const CLAUDIO = "Cláudio";
@@ -53,7 +53,7 @@ function parseMessage(messageText) {
     const players = Array(MAX_PLAYERS).fill(null); // Initialize 12 empty slots
 
     for (let i = 1; i < lines.length; i++) {
-        const match = lines[i].match(/^(\d{1,2})\s*-\s*(.+)$/); // Match "N - Name"
+        const match = lines[i].match(/^(\d{1,2})\s*-?\s*(.+)$/); // Match "N - Name"
         if (match) {
             const num = parseInt(match[1]);
             const name = match[2].trim();
@@ -135,7 +135,9 @@ client.on('ready', async () => {
         // Only respond if:
         // 1. It's the first relevant message (hasResponded is false)
         // 2. The message contains football keywords
-        if (!hasResponded && includesKeyword(message.body)) {
+        if (
+            //!hasResponded && 
+            includesKeyword(message.body)) {
             console.log("✅ Relevant message detected!");
 
             // Parse the header and player list
