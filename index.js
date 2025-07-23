@@ -8,7 +8,7 @@ const client = new Client({
 });
 
 // Target group name (must match exactly)
-const groupName = "_Co*as de Ferro Sabado 11h";
+const groupName = "Co*as de Ferro Sabado 11h";
 
 // Names to automatically insert into the list
 const CLAUDIO = "Cláudio";
@@ -136,8 +136,9 @@ client.on('ready', async () => {
         // 1. It's the first relevant message (hasResponded is false)
         // 2. The message contains football keywords
         if (
-            //!hasResponded && 
+            !hasResponded &&    // comment to debug
             includesKeyword(message.body)) {
+
             console.log("✅ Relevant message detected!");
 
             // Parse the header and player list
