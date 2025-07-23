@@ -8,17 +8,14 @@ const client = new Client({
 const groupName = "Co*as de Ferro Sabado 11h";
 const CLAUDIO = "Cláudio";
 const RICARDO = "Ricardo";
+const MAX_PLAYERS = 12;
 let hasResponded = false;
 
 const matchKeywords = [
-    "⚽ albogas", 
-    "⚽albogas",
-    "⚽ quinta", 
-    "⚽quinta",
-    "⚽ quinta albogas", 
-    "⚽ albogas quinta",
-    "albogas quinta 22h", 
-    "quinta albogas 22h"
+    "⚽ albogas", "⚽albogas",
+    "⚽ quinta", "⚽quinta",
+    "⚽ quinta albogas", "⚽ albogas quinta",
+    "albogas quinta 22h", "quinta albogas 22h"
 ];
 
 function includesKeyword(text) {
@@ -26,33 +23,44 @@ function includesKeyword(text) {
     return matchKeywords.some(keyword => lower.includes(keyword));
 }
 
-function hasName(text, name) {
-    return text.toLowerCase().includes(name.toLowerCase());
+function parseMessage(message) {
+    const lines = message.trim().split('\n');
+    const header = lines[0];
+    const players = Array(MAX_PLAYERS).fill(null);
+
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const match = line.match(/^(\d{1,2})\s*-\s*(.+)$/);
+        if (match) {
+            const num = parseInt(match[1]);
+            const name = match[2].trim();
+            if (num >= 1 && num <= MAX_PLAYERS) {
+                players[num - 1] = name;
+            }
+        }
+    }
+
+    return { header, players };
 }
 
-function appendPlayers(originalText, startNum = 11) {
-    return `${originalText}\n${startNum} - ${CLAUDIO}\n${startNum + 1} - ${RICARDO}`;
+function formatMessage(header, players) {
+    const lines = [header];
+    for (let i = 0; i < MAX_PLAYERS; i++) {
+        const name = players[i] ?? "";
+        lines.push(`${i + 1} - ${name}`);
+    }
+    return lines.join('\n');
 }
 
-function determineResponse(messageText) {
-    const lower = messageText.toLowerCase();
-    const hasClaudio = hasName(lower, "claudio") || hasName(lower, "cláudio");
-    const hasRicardo = hasName(lower, "ricardo");
-
-    if (hasClaudio && hasRicardo) return null; // No action needed
-
-    const has11or12 = lower.includes("11") || lower.includes("12");
-    if (has11or12) {
-        const indexToSlice = messageText.lastIndexOf("11");
-        const trimmedText = messageText.slice(0, indexToSlice);
-
-        if (hasClaudio) return `${trimmedText}12 - ${RICARDO}`;
-        if (hasRicardo) return `${trimmedText}12 - ${CLAUDIO}`;
-        return `${trimmedText}11 - ${CLAUDIO}\n12 - ${RICARDO}`;
-    } else {
-        if (hasClaudio) return `${messageText}\n12 - ${RICARDO}`;
-        if (hasRicardo) return `${messageText}\n12 - ${CLAUDIO}`;
-        return `${messageText}\n11 - ${CLAUDIO}\n12 - ${RICARDO}`;
+function insertPlayer(players, name, preferredSlot) {
+    if (!players.includes(name)) {
+        if (players[preferredSlot - 1] === null) {
+            players[preferredSlot - 1] = name;
+        } else {
+            // Find first available slot
+            const emptyIndex = players.findIndex(p => p === null);
+            if (emptyIndex !== -1) players[emptyIndex] = name;
+        }
     }
 }
 
@@ -76,15 +84,16 @@ client.on('ready', async () => {
         if (!hasResponded && includesKeyword(message.body)) {
             console.log("✅ Relevant message detected!");
 
-            const response = determineResponse(message.body);
-            if (response) {
-                await client.sendMessage(group.id._serialized, response);
-                console.log("✍️ Message sent to group.");
-            } else {
-                console.log("❌ Names already included. No action taken.");
-            }
+            const { header, players } = parseMessage(message.body);
 
-            hasResponded = true; // Prevent further replies
+            insertPlayer(players, CLAUDIO, 11);
+            insertPlayer(players, RICARDO, 12);
+
+            const response = formatMessage(header, players);
+            await client.sendMessage(group.id._serialized, response);
+
+            console.log("✍️ Message sent with updated player list.");
+            hasResponded = true;
         }
     });
 });
