@@ -22,10 +22,14 @@ let hasResponded = false;
 
 // Keywords to detect messages that are about the football game
 const matchKeywords = [
-    "⚽ albogas", "⚽albogas",
-    "⚽ quinta", "⚽quinta",
-    "⚽ quinta albogas", "⚽ albogas quinta",
-    "albogas quinta 22h", "quinta albogas 22h"
+    "⚽ albogas",
+    "⚽albogas",
+    "⚽ quinta", 
+    "⚽quinta",
+    "⚽ quinta albogas", 
+    "⚽ albogas quinta",
+    "albogas quinta 22h", 
+    "quinta albogas 22h"
 ];
 
 /**
@@ -35,8 +39,8 @@ const matchKeywords = [
 function normalizeName(name) {
     return name
         .toLowerCase()
-        .normalize("NFD")                // Decompose accents
-        .replace(/[\u0300-\u036f]/g, ""); // Remove accent characters
+        .normalize("NFD")                // Decompose accents (á = 1 character; becomes á = 2 characters ))
+        .replace(/[\u0300-\u036f]/g, ""); // Remove accent characters (in tge example above, removes the 2nd character '´', becomming only 'a')
 }
 
 /**
@@ -45,7 +49,7 @@ function normalizeName(name) {
  */
 function parseMessage(messageText) {
     const lines = messageText.trim().split('\n');
-    const header = lines[0]; // First line is the message title/header
+    const header = lines[0]; // First line is the message header
     const players = Array(MAX_PLAYERS).fill(null); // Initialize 12 empty slots
 
     for (let i = 1; i < lines.length; i++) {
@@ -69,7 +73,7 @@ function parseMessage(messageText) {
 function formatMessage(header, players) {
     const lines = [header];
     for (let i = 0; i < MAX_PLAYERS; i++) {
-        const name = players[i] ?? ""; // Empty string if slot is null
+        const name = players[i] ?? ""; // Empty string if name slot is null
         lines.push(`${i + 1} - ${name}`);
     }
     return lines.join('\n');
@@ -77,7 +81,7 @@ function formatMessage(header, players) {
 
 /**
  * Inserts a player name into the last available position in the list.
- * Will not insert if the name (accent or not) is already in the list.
+ * Will not insert if the name is already in the list.
  */
 function insertPlayerLast(players, nameToInsert) {
     const normTarget = normalizeName(nameToInsert);
@@ -145,7 +149,7 @@ client.on('ready', async () => {
             const finalMessage = formatMessage(header, players);
             await client.sendMessage(group.id._serialized, finalMessage);
 
-            console.log("✍️ Message sent with formatted list.");
+            console.log("✍️ Message sent with new list.");
 
             // Prevent multiple replies to the same list
             hasResponded = true;
