@@ -1,81 +1,91 @@
-
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
-// Use local auth to persist session
 const client = new Client({
     authStrategy: new LocalAuth()
 });
 
+const groupName = "Co*as de Ferro Sabado 11h";
+const CLAUDIO = "Cláudio";
+const RICARDO = "Ricardo";
+let hasResponded = false;
+
+const matchKeywords = [
+    "⚽ albogas", 
+    "⚽albogas",
+    "⚽ quinta", 
+    "⚽quinta",
+    "⚽ quinta albogas", 
+    "⚽ albogas quinta",
+    "albogas quinta 22h", 
+    "quinta albogas 22h"
+];
+
+function includesKeyword(text) {
+    const lower = text.toLowerCase();
+    return matchKeywords.some(keyword => lower.includes(keyword));
+}
+
+function hasName(text, name) {
+    return text.toLowerCase().includes(name.toLowerCase());
+}
+
+function appendPlayers(originalText, startNum = 11) {
+    return `${originalText}\n${startNum} - ${CLAUDIO}\n${startNum + 1} - ${RICARDO}`;
+}
+
+function determineResponse(messageText) {
+    const lower = messageText.toLowerCase();
+    const hasClaudio = hasName(lower, "claudio") || hasName(lower, "cláudio");
+    const hasRicardo = hasName(lower, "ricardo");
+
+    if (hasClaudio && hasRicardo) return null; // No action needed
+
+    const has11or12 = lower.includes("11") || lower.includes("12");
+    if (has11or12) {
+        const indexToSlice = messageText.lastIndexOf("11");
+        const trimmedText = messageText.slice(0, indexToSlice);
+
+        if (hasClaudio) return `${trimmedText}12 - ${RICARDO}`;
+        if (hasRicardo) return `${trimmedText}12 - ${CLAUDIO}`;
+        return `${trimmedText}11 - ${CLAUDIO}\n12 - ${RICARDO}`;
+    } else {
+        if (hasClaudio) return `${messageText}\n12 - ${RICARDO}`;
+        if (hasRicardo) return `${messageText}\n12 - ${CLAUDIO}`;
+        return `${messageText}\n11 - ${CLAUDIO}\n12 - ${RICARDO}`;
+    }
+}
+
 client.on('qr', qr => {
-    console.log('Scan this QR with your WhatsApp:');
+    console.log('📱 Scan this QR with your WhatsApp:');
     qrcode.generate(qr, { small: true });
 });
 
-
-  
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log('✅ Client is ready!');
-    
-    // group name
-    const groupName = "Co*as de Ferro Sabado 11h";
-    let written = 1;
-    let lastNum = 0;
-    let integer;
-    let claudioNum;
-    let ricardoNum;
 
-    let stringSliced;
-    let indexToSlice;
+    const chats = await client.getChats();
+    const group = chats.find(chat => chat.isGroup && chat.name === groupName);
 
-    // Find the group
-    client.getChats().then(chats => {
+    if (!group) {
+        console.log("❌ Group not found.");
+        return;
+    }
 
-        const group = chats.find(chat => chat.isGroup && chat.name === groupName);
+    client.on('message', async message => {
+        if (!hasResponded && includesKeyword(message.body)) {
+            console.log("✅ Relevant message detected!");
 
-        if (!group) {
-            console.log("❌ Group not found.");
-            return;
-        }
-
-        client.on('message', async message =>{
-            if ((
-            message.body.toLowerCase().includes("⚽ albogas") || 
-            message.body.toLowerCase().includes("⚽albogas") ||
-            message.body.toLowerCase().includes("⚽ quinta") ||
-            message.body.toLowerCase().includes("⚽quinta") ||
-            message.body.toLowerCase().includes("⚽ quinta albogas") ||
-            message.body.toLowerCase().includes("⚽ albogas quinta") ||
-            message.body.toLowerCase().includes("albogas quinta 22h") || 
-            message.body.toLowerCase().includes("quinta albogas 22h")
-            ) && written === 1
-            ) {
-                console.log("✅ Message read!");
-
-                lastNum = message.body.lastIndexOf("\n") + 1;
-                integer = Number(message.body[lastNum]);
-                claudioNum = integer+1;
-                ricardoNum = integer+2;
-                //client.sendMessage(group.id._serialized, message.body + "\n" + claudioNum + 
-                //    " - Claudio \n" + ricardoNum + " - Ricardo");
-
-                if (message.body.toLowerCase().includes("11") || message.body.toLowerCase().includes("12")) {
-
-                    indexToSlice = message.body.lastIndexOf("11");
-                    stringSliced = message.body.slice(0, indexToSlice);
-
-                    client.sendMessage(group.id._serialized, stringSliced + "11 - Claudio \n12 - Ricardo"); 
-                }
-                else {
-                    client.sendMessage(group.id._serialized, message.body + "\n11 - Claudio \n12 - Ricardo"); 
-                }
-                   
-                console.log("✅ Message sent!");
-                written--;
+            const response = determineResponse(message.body);
+            if (response) {
+                await client.sendMessage(group.id._serialized, response);
+                console.log("✍️ Message sent to group.");
+            } else {
+                console.log("❌ Names already included. No action taken.");
             }
-        })
 
-
+            hasResponded = true; // Prevent further replies
+        }
     });
 });
 
